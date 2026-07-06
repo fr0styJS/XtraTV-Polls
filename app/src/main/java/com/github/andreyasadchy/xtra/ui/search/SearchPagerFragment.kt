@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -33,6 +34,7 @@ import com.github.andreyasadchy.xtra.ui.search.SearchPagerViewModel.Companion.Se
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
+import com.github.andreyasadchy.xtra.util.isTv
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.reduceDragSensitivity
 import com.google.android.material.tabs.TabLayout
@@ -214,8 +216,16 @@ class SearchPagerFragment : BaseNetworkFragment(), FragmentHost {
                     else -> false
                 }
             }
-            searchView.requestFocus()
-            WindowCompat.getInsetsController(requireActivity().window, searchView).show(WindowInsetsCompat.Type.ime())
+            if (requireContext().isTv()) {
+                // TV IMEs (Fire TV) use fullscreen extract mode; forcing inline mode or showing
+                // the keyboard before the window has focus leaves the app without a focused
+                // window and ANRs on the next key press
+                searchView.imeOptions = searchView.imeOptions and EditorInfo.IME_FLAG_NO_FULLSCREEN.inv()
+                searchView.post { searchView.requestFocus() }
+            } else {
+                searchView.requestFocus()
+                WindowCompat.getInsetsController(requireActivity().window, searchView).show(WindowInsetsCompat.Type.ime())
+            }
             ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
                 val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 toolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
