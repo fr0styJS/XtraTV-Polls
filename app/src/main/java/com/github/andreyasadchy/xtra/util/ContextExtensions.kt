@@ -1,8 +1,10 @@
 package com.github.andreyasadchy.xtra.util
 
 import android.app.Activity
+import android.app.UiModeManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import androidx.appcompat.app.AlertDialog
@@ -18,6 +20,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.Locale
 
 fun Context.prefs(): SharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+
+fun Context.isTv(): Boolean {
+    return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            (getSystemService(Context.UI_MODE_SERVICE) as UiModeManager).currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+}
 
 fun Context.tokenPrefs(): SharedPreferences = getSharedPreferences("prefs2", Context.MODE_PRIVATE)
 
