@@ -1,10 +1,12 @@
 package com.github.andreyasadchy.xtra.ui.search
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -221,6 +223,12 @@ class SearchPagerFragment : BaseNetworkFragment(), FragmentHost {
                 // the keyboard before the window has focus leaves the app without a focused
                 // window and ANRs on the next key press
                 searchView.imeOptions = searchView.imeOptions and EditorInfo.IME_FLAG_NO_FULLSCREEN.inv()
+                // SearchView installs its own click listener on the query field, which stops
+                // TextView from showing the IME on a DPAD_CENTER press, so request it explicitly
+                searchView.findViewById<View>(androidx.appcompat.R.id.search_src_text)?.setOnClickListener { field ->
+                    (requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                        .showSoftInput(field, 0)
+                }
                 searchView.post { searchView.requestFocus() }
             } else {
                 searchView.requestFocus()
