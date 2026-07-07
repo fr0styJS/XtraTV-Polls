@@ -27,8 +27,10 @@ import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
+import com.github.andreyasadchy.xtra.util.isTv
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.reduceDragSensitivity
+import com.github.andreyasadchy.xtra.util.setupTvPagerFocus
 import com.github.andreyasadchy.xtra.util.tokenPrefs
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -172,6 +174,9 @@ class FollowPagerFragment : Fragment(), Scrollable, FragmentHost {
                     else -> getString(R.string.live)
                 }
             }.attach()
+            if (requireContext().isTv()) {
+                viewPager.setupTvPagerFocus(tabLayout)
+            }
             ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
                 val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
                 toolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {

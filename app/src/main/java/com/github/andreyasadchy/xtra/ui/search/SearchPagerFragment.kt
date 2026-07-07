@@ -39,6 +39,7 @@ import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.isTv
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.reduceDragSensitivity
+import com.github.andreyasadchy.xtra.util.setupTvPagerFocus
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Job
@@ -161,6 +162,9 @@ class SearchPagerFragment : BaseNetworkFragment(), FragmentHost {
                     else -> getString(R.string.channels)
                 }
             }.attach()
+            if (requireContext().isTv()) {
+                viewPager.setupTvPagerFocus(tabLayout)
+            }
             val navController = findNavController()
             val appBarConfiguration = AppBarConfiguration(setOf(R.id.rootGamesFragment, R.id.rootTopFragment, R.id.followPagerFragment, R.id.followMediaFragment, R.id.savedPagerFragment, R.id.savedMediaFragment))
             toolbar.setupWithNavController(navController, appBarConfiguration)

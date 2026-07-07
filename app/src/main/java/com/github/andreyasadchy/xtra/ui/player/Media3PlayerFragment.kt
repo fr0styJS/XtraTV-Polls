@@ -25,6 +25,7 @@ import android.view.GestureDetector
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.KeyEvent
 import android.view.RoundedCorner
 import android.view.VelocityTracker
 import android.view.View
@@ -80,6 +81,7 @@ import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.isKeyboardShown
+import com.github.andreyasadchy.xtra.util.isTv
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -132,8 +134,99 @@ abstract class Media3PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFr
 
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            minimize()
+            if (requireContext().isTv()) {
+                // a minimized player can't be touched to restore or close on TV
+                close()
+                (requireActivity() as? MainActivity)?.closePlayer()
+            } else {
+                minimize()
+            }
         }
+    }
+
+    // Remote control handling while the player is fullscreen on TV. Called from
+    // MainActivity.dispatchKeyEvent before the event reaches the view tree, so the
+    // browsing UI behind the player never sees D-pad input (a center press used to
+    // re-click the stream card behind the player and restart playback).
+    fun handleTvKeyEvent(event: KeyEvent): Boolean {
+        if (!isMaximized || view == null) return false
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    playPause()
+                    showController()
+                }
+                return true
+            }
+            KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                if (event.action == KeyEvent.ACTION_DOWN) tvSeekBy(-TV_SEEK_OFFSET)
+                return true
+            }
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                if (event.action == KeyEvent.ACTION_DOWN) tvSeekBy(TV_SEEK_OFFSET)
+                return true
+            }
+        }
+        if (binding.playerControls.root.isVisible) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_BACK -> {
+                    if (event.action == KeyEvent.ACTION_DOWN) hideController()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    showController() // keep the overlay alive while navigating it
+                    if (binding.playerControls.root.findFocus() == null) {
+                        // focus escaped the overlay (e.g. auto-hide raced a show) -
+                        // pull it back instead of letting the event hit the background
+                        binding.playerControls.playPause.requestFocus()
+                        return true
+                    }
+                    return false // let the D-pad navigate and click the controls
+                }
+                else -> return false
+            }
+        } else {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        playPause()
+                        showController()
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        if (videoType == STREAM) showController() else tvSeekBy(-TV_SEEK_OFFSET)
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        if (videoType == STREAM) showController() else tvSeekBy(TV_SEEK_OFFSET)
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        showController()
+                        binding.playerControls.playPause.requestFocus()
+                    }
+                    return true
+                }
+                else -> return false
+            }
+        }
+    }
+
+    private fun tvSeekBy(offset: Long) {
+        if (videoType == STREAM) return
+        getCurrentPosition()?.let { position ->
+            seek((position + offset).coerceAtLeast(0))
+            updateProgress()
+        }
+        showController()
     }
 
     open fun startStream(url: String?) {}
@@ -242,7 +335,7 @@ abstract class Media3PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFr
             } else {
                 disableBackground()
             }
-            isChatOpen = requireContext().prefs().getBoolean(C.KEY_CHAT_OPENED, true) && !requireContext().prefs().getBoolean(C.CHAT_DISABLE, false)
+            isChatOpen = requireContext().prefs().getBoolean(C.KEY_CHAT_OPENED, true) && !requireContext().prefs().getBoolean(C.CHAT_DISABLE, false) && !requireContext().isTv()
             chatWidthLandscape = requireContext().prefs().getInt(C.LANDSCAPE_CHAT_WIDTH, 0)
             resizeMode = requireContext().prefs().getInt(C.ASPECT_RATIO_LANDSCAPE, AspectRatioFrameLayout.RESIZE_MODE_FIT)
             aspectRatioFrameLayout.setAspectRatio(16f / 9f)
@@ -2656,6 +2749,8 @@ abstract class Media3PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFr
         private const val REQUEST_CODE_SPEED = 1
         private const val REQUEST_CODE_AUDIO_ONLY = 2
         private const val REQUEST_CODE_PLAY_PAUSE = 3
+
+        private const val TV_SEEK_OFFSET = 15_000L
 
         internal const val STREAM = "stream"
         internal const val VIDEO = "video"
