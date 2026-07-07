@@ -1,21 +1,25 @@
-# Xtra for Twitch
+# XtraTV
 
-<img src="https://github.com/AndreyAsadchy/Xtra/blob/197ba90cac879abd2a5645393ce361847f12fa0b/app/src/main/ic_launcher-web.png" align="left" width="100"/>
+A remote-first Android TV / Fire TV fork of [Xtra](https://github.com/crackededed/Xtra), the Twitch client for Android.
 
-Xtra is a Twitch player and browser for Android.
+Xtra runs on TV devices but its UI is built for touch. XtraTV makes the couch experience native:
 
-</br>
-</br>
+- Left navigation rail (Games / Popular / Following / Saved / Search / Settings) instead of the phone bottom bar
+- Full D-pad support: visible focus states on every card, no focus traps, tabs that switch as you move across them
+- Remote player controls — center: play/pause, left/right: seek 15s in VODs and clips, up/down: control overlay, back: exit
+- Search that opens and types with the TV keyboard
+- Starts on Following → Channels so your channels are one click away
 
-## Download
+Phone behavior is unchanged; TV mode activates automatically on leanback devices.
 
-[<img src="https://f-droid.org/badge/get-it-on.png"
-      alt="Get it on F-Droid"
-      height="80">](https://f-droid.org/packages/com.github.andreyasadchy.xtra/)
+## Install
 
-You can find released APKs [here](https://github.com/crackededed/Xtra/releases/tag/latest).
-
-[Xtra subreddit](https://www.reddit.com/r/XtraForTwitch)
+```
+gradlew assembleDebug
+adb connect <tv-ip>:5555
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
 
 ## License
-Xtra is licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+[AGPL-3.0](LICENSE), same as upstream Xtra.
