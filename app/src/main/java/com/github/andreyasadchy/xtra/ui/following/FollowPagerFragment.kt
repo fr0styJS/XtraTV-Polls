@@ -156,7 +156,11 @@ class FollowPagerFragment : Fragment(), Scrollable, FragmentHost {
                 }
             })
             if (firstLaunch) {
-                val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "1"
+                val defaultItem = if (requireContext().isTv()) {
+                    "3" // Channels
+                } else {
+                    tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "1"
+                }
                 viewPager.setCurrentItem(
                     tabs.indexOf(defaultItem).takeIf { it != -1 } ?: tabs.indexOf("1").takeIf { it != -1 } ?: 0,
                     false

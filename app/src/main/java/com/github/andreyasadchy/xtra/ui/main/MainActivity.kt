@@ -1177,7 +1177,7 @@ class MainActivity : AppCompatActivity() {
                     !TwitchApiHelper.getHelixHeaders(this)[C.HEADER_TOKEN].isNullOrBlank()
             val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "1"
             when {
-                (isLoggedIn && startOnFollowed < 2) || (!isLoggedIn && startOnFollowed == 0) || defaultItem == "2" -> {
+                isTvDevice || (isLoggedIn && startOnFollowed < 2) || (!isLoggedIn && startOnFollowed == 0) || defaultItem == "2" -> {
                     if (prefs.getBoolean(C.UI_FOLLOW_PAGER, true)) {
                         it.setStartDestination(R.id.followPagerFragment)
                     } else {
