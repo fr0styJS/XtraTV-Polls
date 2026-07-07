@@ -173,14 +173,21 @@ abstract class PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFragment
                 KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
                 KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                    showController() // keep the overlay alive while navigating it
-                    if (binding.playerControls.root.findFocus() == null) {
-                        // focus escaped the overlay (e.g. auto-hide raced a show) -
-                        // pull it back instead of letting the event hit the background
-                        binding.playerControls.playPause.requestFocus()
-                        return true
+                    showController() // keep the overlay alive
+                    if (binding.playerControls.root.findFocus() != null) {
+                        return false // let the D-pad navigate and click the controls
                     }
-                    return false // let the D-pad navigate and click the controls
+                    // overlay is up only as seek/play feedback - keep repeated presses
+                    // seeking, and enter the buttons only on an explicit up/down
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        when (event.keyCode) {
+                            KeyEvent.KEYCODE_DPAD_LEFT -> if (!isLive) tvSeekBy(-TV_SEEK_OFFSET)
+                            KeyEvent.KEYCODE_DPAD_RIGHT -> if (!isLive) tvSeekBy(TV_SEEK_OFFSET)
+                            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> binding.playerControls.playPause.requestFocus()
+                            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> playPause()
+                        }
+                    }
+                    return true
                 }
                 else -> return false
             }
