@@ -35,7 +35,8 @@ fun ViewPager2.setupTvPagerFocus(tabLayout: TabLayout) {
         val update = {
             for (i in 0 until recyclerView.childCount) {
                 (recyclerView.getChildAt(i) as? ViewGroup)?.let { page ->
-                    page.descendantFocusability = if (recyclerView.getChildAdapterPosition(page) == currentItem) {
+                    val position = recyclerView.getChildAdapterPosition(page)
+                    page.descendantFocusability = if (position == currentItem || position == RecyclerView.NO_POSITION) {
                         ViewGroup.FOCUS_BEFORE_DESCENDANTS
                     } else {
                         ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -43,12 +44,24 @@ fun ViewPager2.setupTvPagerFocus(tabLayout: TabLayout) {
                 }
             }
         }
+        recyclerView.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
+            override fun onChildViewAttachedToWindow(view: View) = update()
+            override fun onChildViewDetachedFromWindow(view: View) {}
+        })
         recyclerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> update() }
         registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 post { update() }
             }
         })
+        // Focus search can dead-end on the pager itself (it is a focusable scroll
+        // container that overlaps its children) - push focus into the current page
+        recyclerView.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                update()
+                (recyclerView.findViewHolderForAdapterPosition(currentItem)?.itemView as? ViewGroup)?.requestFocus()
+            }
+        }
     }
 }
 
