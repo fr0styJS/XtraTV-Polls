@@ -36,6 +36,23 @@ class MakePredictionResponse(
 }
 
 @Serializable
+class RedeemCustomRewardResponse(
+    val errors: List<Error>? = null,
+    val data: Data? = null,
+) {
+    @Serializable
+    class Data(
+        val redeemCommunityPointsCustomReward: RedeemCustomReward? = null,
+    )
+
+    @Serializable
+    class RedeemCustomReward(
+        val error: PayloadError? = null,
+        val balance: Int? = null,
+    )
+}
+
+@Serializable
 class PayloadError(
     val code: String? = null,
     val message: String? = null,

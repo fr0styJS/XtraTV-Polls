@@ -80,6 +80,16 @@
             app:layout_constraintBottom_toTopOf="@id/emoteMenu"
             tools:visibility="visible">
 
+            <ImageButton
+                android:id="@+id/points"
+                android:layout_width="50dp"
+                android:layout_height="match_parent"
+                android:background="?android:selectableItemBackground"
+                android:contentDescription="@string/channel_points"
+                android:src="@drawable/ic_channel_points_24dp"
+                app:tint="?attr/colorControlNormal"
+                tools:visibility="visible" />
+
             <MultiAutoCompleteTextView
                 android:id="@+id/editText"
                 android:layout_width="0dp"

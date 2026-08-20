@@ -465,6 +465,15 @@
     <string name="prediction_bet_placed">Bet placed</string>
     <string name="prediction_bet_failed">Failed to place bet</string>
     <string name="not_logged_in">You must be signed in</string>
+    <string name="channel_points">Channel points</string>
+    <string name="channel_points_balance">Balance: %1$d</string>
+    <string name="reward_item">%1$s — %2$d points</string>
+    <string name="no_channel_points_rewards">No channel point rewards available</string>
+    <string name="redeem">Redeem</string>
+    <string name="redeem_confirm">Redeem %1$s for %2$d channel points?</string>
+    <string name="redeem_input">Reward input</string>
+    <string name="redeemed">Redeemed</string>
+    <string name="redeem_failed">Failed to redeem</string>
     <string name="api_token_settings">API token settings</string>
     <string name="download_settings">Downloads</string>
     <string name="update_settings">Update settings</string>

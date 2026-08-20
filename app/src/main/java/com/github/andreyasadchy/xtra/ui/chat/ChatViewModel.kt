@@ -31,6 +31,7 @@ import com.github.andreyasadchy.xtra.model.chat.STVUser
 import com.github.andreyasadchy.xtra.model.chat.TwitchBadge
 import com.github.andreyasadchy.xtra.model.chat.TwitchEmote
 import com.github.andreyasadchy.xtra.model.chat.VideoChatMessage
+import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointRewardsResponse
 import com.github.andreyasadchy.xtra.model.ui.TranslatedChannel
 import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
@@ -1872,6 +1873,8 @@ class ChatViewModel(
     val pollVoteResult = MutableSharedFlow<Pair<Boolean, String?>>()
     val predictionBetResult = MutableSharedFlow<Pair<Boolean, String?>>()
     val channelPointsBalance = MutableStateFlow<Int?>(null)
+    val channelPointRewards = MutableStateFlow<List<ChannelPointRewardsResponse.Community.Channel.CommunityPointsSettings.CustomReward>?>(null)
+    val channelPointRedeemResult = MutableSharedFlow<Pair<Boolean, String?>>()
 
     fun loadChannelPointsBalance(networkLibrary: String?, gqlHeaders: Map<String, String>, channelLogin: String?, enableIntegrity: Boolean) {
         if (gqlHeaders[C.HEADER_TOKEN].isNullOrBlank()) return
@@ -1887,6 +1890,46 @@ class ChatViewModel(
                 channelPointsBalance.value = response.data?.community?.channel?.self?.communityPoints?.balance
             } catch (e: Exception) {
 
+            }
+        }
+    }
+
+    fun loadChannelPointRewards(networkLibrary: String?, gqlHeaders: Map<String, String>, channelLogin: String?, enableIntegrity: Boolean) {
+        if (gqlHeaders[C.HEADER_TOKEN].isNullOrBlank()) return
+        viewModelScope.launch {
+            try {
+                val response = graphQLRepository.loadChannelPointRewards(networkLibrary, gqlHeaders, channelLogin)
+                if (enableIntegrity) {
+                    response.errors?.find { it.message == C.FAILED_INTEGRITY_CHECK }?.let {
+                        integrity.emit("refresh")
+                        return@launch
+                    }
+                }
+                val settings = response.data?.community?.channel
+                channelPointsBalance.value = settings?.self?.communityPoints?.balance
+                channelPointRewards.value = settings?.communityPointsSettings?.customRewards
+            } catch (e: Exception) {
+
+            }
+        }
+    }
+
+    fun redeemChannelPointReward(networkLibrary: String?, gqlHeaders: Map<String, String>, channelId: String?, rewardId: String?, title: String?, cost: Int?, prompt: String?, textInput: String?, enableIntegrity: Boolean) {
+        if (rewardId.isNullOrBlank() || channelId.isNullOrBlank()) return
+        viewModelScope.launch {
+            try {
+                val response = graphQLRepository.redeemCustomReward(networkLibrary, gqlHeaders, channelId, rewardId, title, cost, prompt, textInput)
+                if (enableIntegrity) {
+                    response.errors?.find { it.message == C.FAILED_INTEGRITY_CHECK }?.let {
+                        integrity.emit("refresh")
+                        return@launch
+                    }
+                }
+                val errorCode = response.data?.redeemCommunityPointsCustomReward?.error?.code
+                response.data?.redeemCommunityPointsCustomReward?.balance?.let { channelPointsBalance.value = it }
+                channelPointRedeemResult.emit((errorCode == null) to errorCode)
+            } catch (e: Exception) {
+                channelPointRedeemResult.emit(false to null)
             }
         }
     }

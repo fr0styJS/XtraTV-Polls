@@ -68,6 +68,7 @@ import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -326,6 +327,10 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                             } else {
                                 toggleEmoteMenu(false)
                             }
+                        }
+                        points.setOnClickListener {
+                            toggleEmoteMenu(false)
+                            showChannelPointsDialog()
                         }
                         messagingEnabled = true
                     }
@@ -734,6 +739,18 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                     }
                     viewLifecycleOwner.lifecycleScope.launch {
                         repeatOnLifecycle(Lifecycle.State.STARTED) {
+                            viewModel.channelPointRedeemResult.collectLatest { result ->
+                                val (success, errorCode) = result
+                                if (success) {
+                                    Toast.makeText(requireContext(), R.string.redeemed, Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(requireContext(), errorCode?.let { getString(R.string.redeem_failed) + " ($it)" } ?: getString(R.string.redeem_failed), Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        repeatOnLifecycle(Lifecycle.State.STARTED) {
                             viewModel.playbackMessage.collectLatest {
                                 if (it != null) {
                                     if (it.live != null) {
@@ -983,6 +1000,93 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
 
     fun appendEmote(emote: Emote) {
         binding.editText.text.append(emote.name).append(' ')
+    }
+
+    private fun showChannelPointsDialog() {
+        val accountId = requireContext().tokenPrefs().getString(C.USER_ID, null)
+        if (accountId.isNullOrBlank()) {
+            Toast.makeText(requireContext(), R.string.not_logged_in, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val channelId = requireArguments().getString(KEY_CHANNEL_ID)
+        val channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN)
+        val networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP)
+        val gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), true)
+        val enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false)
+        viewModel.loadChannelPointRewards(networkLibrary, gqlHeaders, channelLogin, enableIntegrity)
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.channelPointRewards.take(1).collectLatest { rewards ->
+                    val balance = viewModel.channelPointsBalance.value ?: 0
+                    val list = rewards
+                        ?.filter { it.isEnabled != false && it.isInStock != false && it.pricingType == "POINTS" && (it.cost ?: 0) > 0 }
+                        ?.sortedBy { it.cost }
+                        ?: return@collectLatest
+                    if (list.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.no_channel_points_rewards, Toast.LENGTH_SHORT).show()
+                        return@collectLatest
+                    }
+                    val titles = list.map {
+                        getString(R.string.reward_item, it.title, it.cost ?: 0)
+                    }.toTypedArray()
+                    val chooser = requireContext().getAlertDialogBuilder()
+                        .setTitle(R.string.channel_points)
+                        .setItems(titles) { _, which ->
+                            val reward = list[which]
+                            val cost = reward.cost ?: 0
+                            if (balance < cost) {
+                                Toast.makeText(requireContext(), R.string.redeem_failed, Toast.LENGTH_SHORT).show()
+                                return@setItems
+                            }
+                            if (reward.isUserInputRequired == true) {
+                                val input = EditText(requireContext()).apply {
+                                    hint = getString(R.string.redeem_input)
+                                }
+                                requireContext().getAlertDialogBuilder()
+                                    .setTitle(getString(R.string.redeem_confirm, reward.title, cost))
+                                    .setView(input)
+                                    .setPositiveButton(R.string.redeem) { _, _ ->
+                                        redeemReward(reward, cost, channelId, input.text.toString(), networkLibrary, gqlHeaders, enableIntegrity)
+                                    }
+                                    .setNegativeButton(android.R.string.cancel, null)
+                                    .show()
+                            } else {
+                                requireContext().getAlertDialogBuilder()
+                                    .setTitle(getString(R.string.redeem_confirm, reward.title, cost))
+                                    .setPositiveButton(R.string.redeem) { _, _ ->
+                                        redeemReward(reward, cost, channelId, null, networkLibrary, gqlHeaders, enableIntegrity)
+                                    }
+                                    .setNegativeButton(android.R.string.cancel, null)
+                                    .show()
+                            }
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                    chooser.show()
+                }
+            }
+        }
+    }
+
+    private fun redeemReward(
+        reward: com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointRewardsResponse.Community.Channel.CommunityPointsSettings.CustomReward,
+        cost: Int,
+        channelId: String?,
+        textInput: String?,
+        networkLibrary: String?,
+        gqlHeaders: Map<String, String>,
+        enableIntegrity: Boolean,
+    ) {
+        viewModel.redeemChannelPointReward(
+            networkLibrary = networkLibrary,
+            gqlHeaders = gqlHeaders,
+            channelId = channelId,
+            rewardId = reward.id,
+            title = reward.title,
+            cost = cost,
+            prompt = reward.prompt,
+            textInput = textInput,
+            enableIntegrity = enableIntegrity,
+        )
     }
 
     private fun showPollVoteDialog() {

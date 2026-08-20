@@ -71,10 +71,12 @@ import com.github.andreyasadchy.xtra.model.gql.channel.ChannelViewerListResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.BadgesResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.ChannelCheerEmotesResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointContextResponse
+import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointRewardsResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.EmoteCardResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.GlobalCheerEmotesResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.MakePredictionResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.ModeratorsResponse
+import com.github.andreyasadchy.xtra.model.gql.chat.RedeemCustomRewardResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.UserEmotesResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.VipsResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.VoteInPollResponse
@@ -1584,6 +1586,55 @@ class GraphQLRepository(
             }
         }.toString()
         json.decodeFromString<MakePredictionResponse>(sendPersistedQuery(networkLibrary, headers, body))
+    }
+
+    suspend fun loadChannelPointRewards(networkLibrary: String?, headers: Map<String, String>, channelLogin: String?): ChannelPointRewardsResponse = withContext(Dispatchers.IO) {
+        val body = buildJsonObject {
+            putJsonObject("extensions") {
+                putJsonObject("persistedQuery") {
+                    put("sha256Hash", "7fe050e3761eb2cf258d70ee1a21cbd76fa8cf3d7e7b12fc437e7029d446b5e3")
+                    put("version", 1)
+                }
+            }
+            put("operationName", "ChannelPointsContext")
+            putJsonObject("variables") {
+                put("channelLogin", channelLogin)
+                putJsonArray("includeGoalTypes") {
+                    add("CREATOR")
+                    add("BOOST")
+                }
+            }
+        }.toString()
+        json.decodeFromString<ChannelPointRewardsResponse>(sendPersistedQuery(networkLibrary, headers, body))
+    }
+
+    suspend fun redeemCustomReward(networkLibrary: String?, headers: Map<String, String>, channelId: String?, rewardId: String?, title: String?, cost: Int?, prompt: String?, textInput: String?): RedeemCustomRewardResponse = withContext(Dispatchers.IO) {
+        val body = buildJsonObject {
+            putJsonObject("extensions") {
+                putJsonObject("persistedQuery") {
+                    put("sha256Hash", "d56249a7adb4978898ea3412e196688d4ac3cea1c0c2dfd65561d229ea5dcc42")
+                    put("version", 1)
+                }
+            }
+            put("operationName", "RedeemCustomReward")
+            putJsonObject("variables") {
+                putJsonObject("input") {
+                    put("channelID", channelId)
+                    put("rewardID", rewardId)
+                    put("title", title)
+                    put("cost", cost)
+                    put("pricingType", "POINTS")
+                    put("transactionID", Uuid.random().toHexString())
+                    if (!prompt.isNullOrBlank()) {
+                        put("prompt", prompt)
+                    }
+                    if (!textInput.isNullOrBlank()) {
+                        put("textInput", textInput)
+                    }
+                }
+            }
+        }.toString()
+        json.decodeFromString<RedeemCustomRewardResponse>(sendPersistedQuery(networkLibrary, headers, body))
     }
 
     suspend fun sendAnnouncement(networkLibrary: String?, headers: Map<String, String>, channelId: String?, message: String?, color: String?): ErrorResponse = withContext(Dispatchers.IO) {
