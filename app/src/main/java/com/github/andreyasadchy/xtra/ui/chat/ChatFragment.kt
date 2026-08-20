@@ -45,6 +45,7 @@ import com.github.andreyasadchy.xtra.model.chat.ChatMessage
 import com.github.andreyasadchy.xtra.model.chat.Emote
 import com.github.andreyasadchy.xtra.model.chat.Poll
 import com.github.andreyasadchy.xtra.model.chat.Prediction
+import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointCustomReward
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.chat.ChatViewModel.Companion.ChatViewModelFactory
@@ -68,6 +69,7 @@ import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -93,6 +95,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
     private var activePrediction: Prediction? = null
     private var pollVotedChoiceId: String? = null
     private var predictionBetOutcomeId: String? = null
+    private var channelPointsDialogShowing = false
 
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -1003,8 +1006,11 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
     }
 
     private fun showChannelPointsDialog() {
+        if (channelPointsDialogShowing) return
+        channelPointsDialogShowing = true
         val accountId = requireContext().tokenPrefs().getString(C.USER_ID, null)
         if (accountId.isNullOrBlank()) {
+            channelPointsDialogShowing = false
             Toast.makeText(requireContext(), R.string.not_logged_in, Toast.LENGTH_SHORT).show()
             return
         }
@@ -1016,7 +1022,8 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
         viewModel.loadChannelPointRewards(networkLibrary, gqlHeaders, channelLogin, enableIntegrity)
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.channelPointRewards.take(1).collectLatest { rewards ->
+                viewModel.channelPointRewards.dropWhile { it == null }.take(1).collectLatest { rewards ->
+                    channelPointsDialogShowing = false
                     val balance = viewModel.channelPointsBalance.value ?: 0
                     val list = rewards
                         ?.filter { it.isEnabled != false && it.isInStock != false && it.pricingType == "POINTS" && (it.cost ?: 0) > 0 }
@@ -1068,7 +1075,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
     }
 
     private fun redeemReward(
-        reward: com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointRewardsResponse.Community.Channel.CommunityPointsSettings.CustomReward,
+        reward: ChannelPointCustomReward,
         cost: Int,
         channelId: String?,
         textInput: String?,

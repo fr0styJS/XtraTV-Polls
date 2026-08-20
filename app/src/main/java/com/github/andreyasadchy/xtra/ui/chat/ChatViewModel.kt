@@ -31,7 +31,7 @@ import com.github.andreyasadchy.xtra.model.chat.STVUser
 import com.github.andreyasadchy.xtra.model.chat.TwitchBadge
 import com.github.andreyasadchy.xtra.model.chat.TwitchEmote
 import com.github.andreyasadchy.xtra.model.chat.VideoChatMessage
-import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointRewardsResponse
+import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointCustomReward
 import com.github.andreyasadchy.xtra.model.ui.TranslatedChannel
 import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
@@ -1873,7 +1873,7 @@ class ChatViewModel(
     val pollVoteResult = MutableSharedFlow<Pair<Boolean, String?>>()
     val predictionBetResult = MutableSharedFlow<Pair<Boolean, String?>>()
     val channelPointsBalance = MutableStateFlow<Int?>(null)
-    val channelPointRewards = MutableStateFlow<List<ChannelPointRewardsResponse.Community.Channel.CommunityPointsSettings.CustomReward>?>(null)
+    val channelPointRewards = MutableStateFlow<List<ChannelPointCustomReward>?>(null)
     val channelPointRedeemResult = MutableSharedFlow<Pair<Boolean, String?>>()
 
     fun loadChannelPointsBalance(networkLibrary: String?, gqlHeaders: Map<String, String>, channelLogin: String?, enableIntegrity: Boolean) {

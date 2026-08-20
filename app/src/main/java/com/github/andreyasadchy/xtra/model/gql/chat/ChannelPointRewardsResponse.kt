@@ -36,19 +36,19 @@ class ChannelPointRewardsResponse(
 
     @Serializable
     class CommunityPointsSettings(
-        val customRewards: List<CustomReward>? = null,
-    )
-
-    @Serializable
-    class CustomReward(
-        val id: String? = null,
-        val title: String? = null,
-        val prompt: String? = null,
-        val pricingType: String? = null,
-        val cost: Int? = null,
-        val isEnabled: Boolean? = null,
-        val isPaused: Boolean? = null,
-        val isInStock: Boolean? = null,
-        val isUserInputRequired: Boolean? = null,
+        val customRewards: List<ChannelPointCustomReward>? = null,
     )
 }
+
+@Serializable
+class ChannelPointCustomReward(
+    val id: String? = null,
+    val title: String? = null,
+    val prompt: String? = null,
+    val pricingType: String? = null,
+    val cost: Int? = null,
+    val isEnabled: Boolean? = null,
+    val isPaused: Boolean? = null,
+    val isInStock: Boolean? = null,
+    val isUserInputRequired: Boolean? = null,
+)
