@@ -995,11 +995,11 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
         }
         val choices = poll.choices?.filter { !it.id.isNullOrBlank() } ?: return
         if (choices.isEmpty()) return
-        getAlertDialogBuilder()
+        requireContext().getAlertDialogBuilder()
             .setTitle(poll.title)
             .setItems(choices.map { it.title }.toTypedArray()) { _, which ->
                 val choice = choices[which]
-                getAlertDialogBuilder()
+                requireContext().getAlertDialogBuilder()
                     .setTitle(getString(R.string.poll_vote_confirm, choice.title))
                     .setPositiveButton(R.string.poll_vote) { _, _ ->
                         pollVotedChoiceId = choice.id
@@ -1034,7 +1034,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
             channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
             enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
         )
-        getAlertDialogBuilder()
+        requireContext().getAlertDialogBuilder()
             .setTitle(prediction.title)
             .setItems(outcomes.map { it.title }.toTypedArray()) { _, which ->
                 val outcome = outcomes[which]
@@ -1044,7 +1044,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                     inputType = android.text.InputType.TYPE_CLASS_NUMBER
                     hint = getString(R.string.prediction_bet_points)
                 }
-                getAlertDialogBuilder()
+                requireContext().getAlertDialogBuilder()
                     .setTitle(outcome.title)
                     .setMessage(getString(R.string.prediction_bet_points))
                     .setView(input)

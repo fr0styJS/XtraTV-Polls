@@ -1903,7 +1903,7 @@ class ChatViewModel(
                     }
                 }
                 val errorCode = response.data?.voteInPoll?.error?.code
-                pollVoteResult.emit(errorCode == null to errorCode)
+                pollVoteResult.emit((errorCode == null) to errorCode)
             } catch (e: Exception) {
                 pollVoteResult.emit(false to null)
             }
@@ -1922,7 +1922,7 @@ class ChatViewModel(
                     }
                 }
                 val errorCode = response.data?.makePrediction?.error?.code
-                predictionBetResult.emit(errorCode == null to errorCode)
+                predictionBetResult.emit((errorCode == null) to errorCode)
             } catch (e: Exception) {
                 predictionBetResult.emit(false to null)
             }
