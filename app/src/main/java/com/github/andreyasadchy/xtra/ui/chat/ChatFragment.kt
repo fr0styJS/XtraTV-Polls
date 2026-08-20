@@ -742,7 +742,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                             viewModel.channelPointRedeemResult.collectLatest { result ->
                                 val (success, errorCode) = result
                                 if (success) {
-                                    Toast.makeText(requireContext(), R.string.redeemed, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(requireContext(), R.string.redeemed_reward, Toast.LENGTH_SHORT).show()
                                 } else {
                                     Toast.makeText(requireContext(), errorCode?.let { getString(R.string.redeem_failed) + " ($it)" } ?: getString(R.string.redeem_failed), Toast.LENGTH_SHORT).show()
                                 }

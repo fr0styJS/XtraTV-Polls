@@ -472,7 +472,7 @@
     <string name="redeem">Redeem</string>
     <string name="redeem_confirm">Redeem %1$s for %2$d channel points?</string>
     <string name="redeem_input">Reward input</string>
-    <string name="redeemed">Redeemed</string>
+    <string name="redeemed_reward">Redeemed</string>
     <string name="redeem_failed">Failed to redeem</string>
     <string name="api_token_settings">API token settings</string>
     <string name="download_settings">Downloads</string>
