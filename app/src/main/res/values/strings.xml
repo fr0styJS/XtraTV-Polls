@@ -456,6 +456,15 @@
     <string name="poll_choice_winner">🏆%1$d%% (%2$s): %3$s</string>
     <string name="prediction_outcome">%1$d%% (%2$s💎, %3$s👥): %4$s</string>
     <string name="prediction_outcome_winner">🏆%1$d%% (%2$s💎, %3$s👥): %4$s</string>
+    <string name="poll_vote">Vote</string>
+    <string name="poll_vote_confirm">Vote for "%1$s"?</string>
+    <string name="poll_voted">Voted</string>
+    <string name="poll_vote_failed">Failed to vote</string>
+    <string name="prediction_bet">Place bet</string>
+    <string name="prediction_bet_points">Channel points</string>
+    <string name="prediction_bet_placed">Bet placed</string>
+    <string name="prediction_bet_failed">Failed to place bet</string>
+    <string name="not_logged_in">You must be signed in</string>
     <string name="api_token_settings">API token settings</string>
     <string name="download_settings">Downloads</string>
     <string name="update_settings">Update settings</string>

@@ -1869,6 +1869,66 @@ class ChatViewModel(
         }
     }
 
+    val pollVoteResult = MutableSharedFlow<Pair<Boolean, String?>>()
+    val predictionBetResult = MutableSharedFlow<Pair<Boolean, String?>>()
+    val channelPointsBalance = MutableStateFlow<Int?>(null)
+
+    fun loadChannelPointsBalance(networkLibrary: String?, gqlHeaders: Map<String, String>, channelLogin: String?, enableIntegrity: Boolean) {
+        if (gqlHeaders[C.HEADER_TOKEN].isNullOrBlank()) return
+        viewModelScope.launch {
+            try {
+                val response = graphQLRepository.loadChannelPointsContext(networkLibrary, gqlHeaders, channelLogin)
+                if (enableIntegrity) {
+                    response.errors?.find { it.message == C.FAILED_INTEGRITY_CHECK }?.let {
+                        integrity.emit("refresh")
+                        return@launch
+                    }
+                }
+                channelPointsBalance.value = response.data?.community?.channel?.self?.communityPoints?.balance
+            } catch (e: Exception) {
+
+            }
+        }
+    }
+
+    fun voteInPoll(pollId: String?, choiceId: String?, networkLibrary: String?, gqlHeaders: Map<String, String>, accountId: String?, enableIntegrity: Boolean) {
+        if (pollId.isNullOrBlank() || choiceId.isNullOrBlank() || accountId.isNullOrBlank()) return
+        viewModelScope.launch {
+            try {
+                val response = graphQLRepository.voteInPoll(networkLibrary, gqlHeaders, pollId, choiceId, accountId)
+                if (enableIntegrity) {
+                    response.errors?.find { it.message == C.FAILED_INTEGRITY_CHECK }?.let {
+                        integrity.emit("refresh")
+                        return@launch
+                    }
+                }
+                val errorCode = response.data?.voteInPoll?.error?.code
+                pollVoteResult.emit(errorCode == null to errorCode)
+            } catch (e: Exception) {
+                pollVoteResult.emit(false to null)
+            }
+        }
+    }
+
+    fun makePrediction(eventId: String?, outcomeId: String?, points: Int, networkLibrary: String?, gqlHeaders: Map<String, String>, enableIntegrity: Boolean) {
+        if (eventId.isNullOrBlank() || outcomeId.isNullOrBlank() || points < 10) return
+        viewModelScope.launch {
+            try {
+                val response = graphQLRepository.makePrediction(networkLibrary, gqlHeaders, eventId, outcomeId, points)
+                if (enableIntegrity) {
+                    response.errors?.find { it.message == C.FAILED_INTEGRITY_CHECK }?.let {
+                        integrity.emit("refresh")
+                        return@launch
+                    }
+                }
+                val errorCode = response.data?.makePrediction?.error?.code
+                predictionBetResult.emit(errorCode == null to errorCode)
+            } catch (e: Exception) {
+                predictionBetResult.emit(false to null)
+            }
+        }
+    }
+
     fun send(message: CharSequence, replyId: String?, networkLibrary: String?, gqlHeaders: Map<String, String>, helixHeaders: Map<String, String>, accountId: String?, channelId: String?, channelLogin: String?, useApiCommands: Boolean, useApiChatMessages: Boolean, enableIntegrity: Boolean) {
         if (replyId != null) {
             sendMessage(message, networkLibrary, gqlHeaders, helixHeaders, accountId, channelId, useApiChatMessages, enableIntegrity, replyId)

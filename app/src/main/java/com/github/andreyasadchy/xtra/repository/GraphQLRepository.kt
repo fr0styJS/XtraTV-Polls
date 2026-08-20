@@ -73,9 +73,11 @@ import com.github.andreyasadchy.xtra.model.gql.chat.ChannelCheerEmotesResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.ChannelPointContextResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.EmoteCardResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.GlobalCheerEmotesResponse
+import com.github.andreyasadchy.xtra.model.gql.chat.MakePredictionResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.ModeratorsResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.UserEmotesResponse
 import com.github.andreyasadchy.xtra.model.gql.chat.VipsResponse
+import com.github.andreyasadchy.xtra.model.gql.chat.VoteInPollResponse
 import com.github.andreyasadchy.xtra.model.gql.clip.ClipDataResponse
 import com.github.andreyasadchy.xtra.model.gql.clip.ClipUrlsResponse
 import com.github.andreyasadchy.xtra.model.gql.clip.ClipVideoResponse
@@ -1546,6 +1548,42 @@ class GraphQLRepository(
             }
         }.toString()
         json.decodeFromString<ErrorResponse>(sendPersistedQuery(networkLibrary, headers, body))
+    }
+
+    suspend fun voteInPoll(networkLibrary: String?, headers: Map<String, String>, pollId: String?, choiceId: String?, userId: String?): VoteInPollResponse = withContext(Dispatchers.IO) {
+        val body = buildJsonObject {
+            put("query", "mutation VoteInPoll(\$input: VoteInPollInput!) { voteInPoll(input: \$input) { error { code } } }")
+            putJsonObject("variables") {
+                putJsonObject("input") {
+                    put("pollID", pollId)
+                    put("choiceID", choiceId)
+                    put("userID", userId)
+                    put("voteID", Uuid.random().toString())
+                }
+            }
+        }.toString()
+        json.decodeFromString<VoteInPollResponse>(sendPersistedQuery(networkLibrary, headers, body))
+    }
+
+    suspend fun makePrediction(networkLibrary: String?, headers: Map<String, String>, eventID: String?, outcomeID: String?, points: Int): MakePredictionResponse = withContext(Dispatchers.IO) {
+        val body = buildJsonObject {
+            putJsonObject("extensions") {
+                putJsonObject("persistedQuery") {
+                    put("sha256Hash", "b44682ecc88358817009f20e69d75081b1e58825bb40aa53d5dbadcc17c881d8")
+                    put("version", 1)
+                }
+            }
+            put("operationName", "MakePrediction")
+            putJsonObject("variables") {
+                putJsonObject("input") {
+                    put("eventID", eventID)
+                    put("outcomeID", outcomeID)
+                    put("points", points)
+                    put("transactionID", Uuid.random().toHexString())
+                }
+            }
+        }.toString()
+        json.decodeFromString<MakePredictionResponse>(sendPersistedQuery(networkLibrary, headers, body))
     }
 
     suspend fun sendAnnouncement(networkLibrary: String?, headers: Map<String, String>, channelId: String?, message: String?, color: String?): ErrorResponse = withContext(Dispatchers.IO) {

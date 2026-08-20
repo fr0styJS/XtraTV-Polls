@@ -9,6 +9,7 @@ class Poll(
     val remainingMilliseconds: Int?,
 ) {
     class PollChoice(
+        val id: String?,
         val title: String?,
         val totalVotes: Int?,
     )

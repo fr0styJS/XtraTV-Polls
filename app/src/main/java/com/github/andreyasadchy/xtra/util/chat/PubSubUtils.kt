@@ -98,6 +98,7 @@ object PubSubUtils {
                 if (!title.isNullOrBlank()) {
                     choicesList.add(
                         Poll.PollChoice(
+                            id = if (choice?.isNull("id") == false) choice.optString("id").takeIf { it.isNotBlank() } else null,
                             title = title,
                             totalVotes = choice?.optJSONObject("votes")?.let { votes -> if (!votes.isNull("total")) votes.optInt("total") else null },
                         )

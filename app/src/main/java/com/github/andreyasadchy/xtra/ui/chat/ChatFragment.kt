@@ -10,9 +10,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.MultiAutoCompleteTextView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.res.use
 import androidx.core.view.ViewCompat
@@ -41,6 +43,8 @@ import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.databinding.FragmentChatBinding
 import com.github.andreyasadchy.xtra.model.chat.ChatMessage
 import com.github.andreyasadchy.xtra.model.chat.Emote
+import com.github.andreyasadchy.xtra.model.chat.Poll
+import com.github.andreyasadchy.xtra.model.chat.Prediction
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.chat.ChatViewModel.Companion.ChatViewModelFactory
@@ -83,6 +87,11 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
     private var messagingEnabled = false
 
     private var autoCompleteAdapter: AutoCompleteAdapter<Any>? = null
+
+    private var activePoll: Poll? = null
+    private var activePrediction: Prediction? = null
+    private var pollVotedChoiceId: String? = null
+    private var predictionBetOutcomeId: String? = null
 
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -511,6 +520,10 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                             viewModel.poll.collectLatest { poll ->
                                 if (poll != null) {
                                     if (!viewModel.pollClosed) {
+                                        activePoll = poll
+                                        if (poll.status == "ACTIVE") {
+                                            pollVotedChoiceId = null
+                                        }
                                         when (poll.status) {
                                             "ACTIVE" -> {
                                                 pollLayout.visibility = View.VISIBLE
@@ -522,6 +535,9 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                                                         it.totalVotes?.let { NumberFormat.getInstance().format(it) },
                                                         it.title
                                                     )
+                                                }
+                                                pollChoices.setOnClickListener {
+                                                    showPollVoteDialog()
                                                 }
                                                 pollStatus.visibility = View.VISIBLE
                                             }
@@ -595,6 +611,10 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                             viewModel.prediction.collectLatest { prediction ->
                                 if (prediction != null) {
                                     if (!viewModel.predictionClosed) {
+                                        activePrediction = prediction
+                                        if (prediction.status == "ACTIVE") {
+                                            predictionBetOutcomeId = null
+                                        }
                                         when (prediction.status) {
                                             "ACTIVE" -> {
                                                 predictionLayout.visibility = View.VISIBLE
@@ -608,6 +628,9 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                                                         it.totalUsers?.let { NumberFormat.getInstance().format(it) },
                                                         it.title
                                                     )
+                                                }
+                                                predictionOutcomes.setOnClickListener {
+                                                    showPredictionBetDialog()
                                                 }
                                                 predictionStatus.visibility = View.VISIBLE
                                             }
@@ -679,6 +702,32 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                                     if (it <= 0) {
                                         viewModel.predictionSecondsLeft.value = null
                                     }
+                                }
+                            }
+                        }
+                    }
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        repeatOnLifecycle(Lifecycle.State.STARTED) {
+                            viewModel.pollVoteResult.collectLatest { result ->
+                                val (success, errorCode) = result
+                                if (success) {
+                                    Toast.makeText(requireContext(), R.string.poll_voted, Toast.LENGTH_SHORT).show()
+                                    pollStatus.text = getString(R.string.poll_voted)
+                                } else {
+                                    Toast.makeText(requireContext(), errorCode?.let { getString(R.string.poll_vote_failed) + " ($it)" } ?: getString(R.string.poll_vote_failed), Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        repeatOnLifecycle(Lifecycle.State.STARTED) {
+                            viewModel.predictionBetResult.collectLatest { result ->
+                                val (success, errorCode) = result
+                                if (success) {
+                                    Toast.makeText(requireContext(), R.string.prediction_bet_placed, Toast.LENGTH_SHORT).show()
+                                    predictionStatus.text = getString(R.string.prediction_bet_placed)
+                                } else {
+                                    Toast.makeText(requireContext(), errorCode?.let { getString(R.string.prediction_bet_failed) + " ($it)" } ?: getString(R.string.prediction_bet_failed), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -934,6 +983,91 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
 
     fun appendEmote(emote: Emote) {
         binding.editText.text.append(emote.name).append(' ')
+    }
+
+    private fun showPollVoteDialog() {
+        val poll = activePoll
+        if (poll == null || poll.status != "ACTIVE" || pollVotedChoiceId != null) return
+        val accountId = requireContext().tokenPrefs().getString(C.USER_ID, null)
+        if (accountId.isNullOrBlank()) {
+            Toast.makeText(requireContext(), R.string.not_logged_in, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val choices = poll.choices?.filter { !it.id.isNullOrBlank() } ?: return
+        if (choices.isEmpty()) return
+        getAlertDialogBuilder()
+            .setTitle(poll.title)
+            .setItems(choices.map { it.title }.toTypedArray()) { _, which ->
+                val choice = choices[which]
+                getAlertDialogBuilder()
+                    .setTitle(getString(R.string.poll_vote_confirm, choice.title))
+                    .setPositiveButton(R.string.poll_vote) { _, _ ->
+                        pollVotedChoiceId = choice.id
+                        viewModel.voteInPoll(
+                            pollId = poll.id,
+                            choiceId = choice.id,
+                            networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                            gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), true),
+                            accountId = accountId,
+                            enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+                        )
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+            .show()
+    }
+
+    private fun showPredictionBetDialog() {
+        val prediction = activePrediction
+        if (prediction == null || prediction.status != "ACTIVE" || predictionBetOutcomeId != null) return
+        val accountId = requireContext().tokenPrefs().getString(C.USER_ID, null)
+        if (accountId.isNullOrBlank()) {
+            Toast.makeText(requireContext(), R.string.not_logged_in, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val outcomes = prediction.outcomes?.filter { !it.id.isNullOrBlank() } ?: return
+        if (outcomes.isEmpty()) return
+        viewModel.loadChannelPointsBalance(
+            networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+            gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), true),
+            channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
+            enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+        )
+        getAlertDialogBuilder()
+            .setTitle(prediction.title)
+            .setItems(outcomes.map { it.title }.toTypedArray()) { _, which ->
+                val outcome = outcomes[which]
+                val balance = viewModel.channelPointsBalance.value ?: 0
+                val input = EditText(requireContext()).apply {
+                    setText(minOf(100, max(balance, 10)).toString())
+                    inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                    hint = getString(R.string.prediction_bet_points)
+                }
+                getAlertDialogBuilder()
+                    .setTitle(outcome.title)
+                    .setMessage(getString(R.string.prediction_bet_points))
+                    .setView(input)
+                    .setPositiveButton(R.string.prediction_bet) { _, _ ->
+                        val points = input.text.toString().toIntOrNull() ?: 0
+                        if (points < 10) {
+                            Toast.makeText(requireContext(), R.string.prediction_bet_failed, Toast.LENGTH_SHORT).show()
+                            return@setPositiveButton
+                        }
+                        predictionBetOutcomeId = outcome.id
+                        viewModel.makePrediction(
+                            eventId = prediction.id,
+                            outcomeId = outcome.id,
+                            points = points,
+                            networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                            gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), true),
+                            enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+                        )
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+            .show()
     }
 
     private fun sendMessage(replyId: String? = null): Boolean {
